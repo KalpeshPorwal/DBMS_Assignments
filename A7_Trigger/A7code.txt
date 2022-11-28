@@ -1,0 +1,113 @@
+create table lib (b_id int PRIMARY KEY, 
+nameofbook varchar(30) NOT NULL, 
+author varchar(20) NOT NULL, 
+status char);
+
+create table lib_audit (b_id int PRIMARY KEY, 
+nameofbook varchar(30) NOT NULL, 
+author varchar(20) NOT NULL, 
+cause char,
+dateOfInclusion varchar(19));
+
+create table finetrig ( bid int PRIMARY KEY, fineamt int);
+
+-------------------- trigger before insert -------------------- 
+delimiter $$
+create trigger before_lib_insert 
+BEFORE INSERT 
+ON lib for each row 
+begin 
+if new.b_id < 0 then
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = "Book id must be greater than 0 !";
+end if;
+end $$
+delimiter ;
+
+insert into lib values (-12, "Good Habits", "Wendy Wood", 'I');
+select * from lib;
+select * from finetrig;
+insert into lib values (12, "The power of Habits", "Charles Duhigg", 'I');
+select * from lib;
+select * from finetrig;
+-------------------- trigger after insert --------------------
+delimiter $$
+create trigger after_lib_insert 
+    AFTER INSERT
+    ON lib FOR EACH ROW
+    BEGIN
+    insert into finetrig values (new.b_id, 0);
+    END $$
+delimiter ;
+
+insert into lib values (11, "Good Habits", "Wendy Wood", 'I');
+select * from lib;
+select * from finetrig;
+
+MariaDB [te31456db]> insert into lib values(12, "Database Management", "A.K Raman", 'R');
+
+--------------------  trigger before update --------------------
+delimiter $$
+create trigger before_lib_update
+BEFORE UPDATE
+ON lib FOR EACH ROW
+BEGIN
+DECLARE fine int;
+set fine = FLOOR(10 + RAND() * (20 - 10));
+update finetrig set fineamt = fine where bid = new.b_id;
+end $$
+delimiter ;
+
+--------------------  trigger after update --------------------
+delimiter $$
+create trigger after_lib_update
+AFTER UPDATE
+ON lib FOR EACH ROW
+BEGIN
+insert into lib_audit(b_id, nameofbook, author) select b_id, nameofbook, author from lib where b_id = new.b_id;
+update lib_audit set cause = 'U', dateOfInclusion = NOW() where b_id = new.b_id;
+end $$
+delimiter ;
+
+update lib set status = 'R' where b_id = 11;
+select * from lib;
+select * from finetrig;
+select * from lib_audit;
+
+--------------------  trigger before delete --------------------
+drop trigger before_lib_delete;
+delimiter $$
+create trigger before_lib_delete
+BEFORE DELETE
+ON lib FOR EACH ROW
+BEGIN
+declare availability char;
+select status into availability from lib where b_id = old.b_id;
+IF availability = 'I' then
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = "Book can't be deleted as not available !";
+END IF;
+update lib_audit set cause = 'D', dateOfInclusion = NOW() where b_id = old.b_id;
+END $$
+delimiter ;
+
+--------------------  trigger after delete --------------------
+drop trigger after_lib_delete;
+delimiter $$
+create trigger after_lib_delete
+AFTER DELETE
+ON lib FOR EACH ROW
+BEGIN
+delete from finetrig where bid = old.b_id;
+END $$
+delimiter ;
+
+select * from lib;
+select * from finetrig;
+select * from lib_audit;
+
+
+show TRIGGERS from te31456db;
+
+
+

@@ -1,0 +1,262 @@
+mysql> create table lib (b_id int PRIMARY KEY,
+    -> nameofbook varchar(30) NOT NULL,
+    -> author varchar(20) NOT NULL,
+    -> status char);
+Query OK, 0 rows affected (0.04 sec)
+
+mysql> create table lib_audit (b_id int PRIMARY KEY,
+    -> nameofbook varchar(30) NOT NULL,
+    -> author varchar(20) NOT NULL,
+    -> cause char,
+    -> dateOfInclusion varchar(19));
+Query OK, 0 rows affected (0.04 sec)
+
+mysql> desc lib;
++------------+-------------+------+-----+---------+-------+
+| Field      | Type        | Null | Key | Default | Extra |
++------------+-------------+------+-----+---------+-------+
+| b_id       | int         | NO   | PRI | NULL    |       |
+| nameofbook | varchar(30) | NO   |     | NULL    |       |
+| author     | varchar(20) | NO   |     | NULL    |       |
+| status     | char(1)     | YES  |     | NULL    |       |
++------------+-------------+------+-----+---------+-------+
+4 rows in set (0.01 sec)
+
+mysql> desc lib_audit;
++-----------------+-------------+------+-----+---------+-------+
+| Field           | Type        | Null | Key | Default | Extra |
++-----------------+-------------+------+-----+---------+-------+
+| b_id            | int         | NO   | PRI | NULL    |       |
+| nameofbook      | varchar(30) | NO   |     | NULL    |       |
+| author          | varchar(20) | NO   |     | NULL    |       |
+| cause           | char(1)     | YES  |     | NULL    |       |
+| dateOfInclusion | varchar(19) | YES  |     | NULL    |       |
++-----------------+-------------+------+-----+---------+-------+
+5 rows in set (0.01 sec)
+
+mysql> create table finetrig ( bid int PRIMARY KEY, fineamt int);
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> desc finetrig;
++---------+------+------+-----+---------+-------+
+| Field   | Type | Null | Key | Default | Extra |
++---------+------+------+-----+---------+-------+
+| bid     | int  | NO   | PRI | NULL    |       |
+| fineamt | int  | YES  |     | NULL    |       |
++---------+------+------+-----+---------+-------+
+2 rows in set (0.01 sec)
+
+------------------- BEFORE INSERT -------------------
+mysql> delimiter $$
+mysql> create trigger before_lib_insert
+    -> BEFORE INSERT
+    -> ON lib for each row
+    -> begin
+    -> if new.b_id < 0 then
+    ->     SIGNAL SQLSTATE '45000'
+    ->         SET MESSAGE_TEXT = "Book id must be greater than 0 !";
+    -> end if;
+    -> end $$
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> delimiter ;
+
+mysql> insert into lib values (-12, "Good Habits", "Wendy Wood", 'I');
+ERROR 1644 (45000): Book id must be greater than 0 !
+
+mysql> select * from lib;
+Empty set (0.00 sec)
+
+mysql> select * from finetrig;
+Empty set (0.00 sec)
+
+mysql> insert into lib values (12, "The power of Habits", "Charles Duhigg", 'I');
+Query OK, 1 row affected (0.00 sec)
+
+mysql> select * from lib;
++------+---------------------+----------------+--------+
+| b_id | nameofbook          | author         | status |
++------+---------------------+----------------+--------+
+|   12 | The power of Habits | Charles Duhigg | I      |
++------+---------------------+----------------+--------+
+1 row in set (0.00 sec)
+
+mysql> select * from finetrig;
+Empty set (0.00 sec)
+
+------------------- AFTER INSERT -------------------
+mysql> delimiter $$
+mysql> create trigger after_lib_insert
+    ->     AFTER INSERT
+    ->     ON lib FOR EACH ROW
+    ->     BEGIN
+    ->     insert into finetrig values (new.b_id, 0);
+    ->     END $$
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> delimiter ;
+mysql> delete from lib;
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from lib;
+Empty set (0.00 sec)
+
+mysql> insert into lib values (11, "Good Habits", "Wendy Wood", 'I');
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from lib;
++------+-------------+------------+--------+
+| b_id | nameofbook  | author     | status |
++------+-------------+------------+--------+
+|   11 | Good Habits | Wendy Wood | I      |
++------+-------------+------------+--------+
+1 row in set (0.00 sec)
+
+mysql> select * from finetrig;
++-----+---------+
+| bid | fineamt |
++-----+---------+
+|  11 |       0 |
++-----+---------+
+1 row in set (0.00 sec)
+
+mysql> insert into lib values (-12, "Good Habits", "Wendy Wood", 'I');
+ERROR 1644 (45000): Book id must be greater than 0 !
+
+mysql> select * from lib;
++------+-------------+------------+--------+
+| b_id | nameofbook  | author     | status |
++------+-------------+------------+--------+
+|   11 | Good Habits | Wendy Wood | I      |
++------+-------------+------------+--------+
+1 row in set (0.00 sec)
+
+mysql> select * from finetrig;
++-----+---------+
+| bid | fineamt |
++-----+---------+
+|  11 |       0 |
++-----+---------+
+1 row in set (0.00 sec)
+
+------------------- BEFORE UPDATE -------------------
+mysql> delimiter $$
+mysql> create trigger before_lib_update
+    -> BEFORE UPDATE
+    -> ON lib FOR EACH ROW
+    -> BEGIN
+    -> DECLARE fine int;
+    -> set fine = FLOOR(10 + RAND() * (20 - 10));
+    -> update finetrig set fineamt = fine where bid = new.b_id;
+    -> end $$
+Query OK, 0 rows affected (0.02 sec)
+
+------------------- AFTER UPDATE -------------------
+mysql> delimiter $$
+mysql> create trigger after_lib_update
+    -> AFTER UPDATE
+    -> ON lib FOR EACH ROW
+    -> BEGIN
+    -> insert into lib_audit(b_id, nameofbook, author) select b_id, nameofbook, author from lib where b_id = new.b_id;
+    -> update lib_audit set cause = 'U', dateOfInclusion = NOW() where b_id = new.b_id;
+    -> end $$
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> delimiter ;
+mysql> update lib set status = 'R' where b_id = 11;
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> select * from lib;
++------+-------------+------------+--------+
+| b_id | nameofbook  | author     | status |
++------+-------------+------------+--------+
+|   11 | Good Habits | Wendy Wood | R      |
++------+-------------+------------+--------+
+1 row in set (0.00 sec)
+
+mysql> select * from finetrig;
++-----+---------+
+| bid | fineamt |
++-----+---------+
+|  11 |      10 |
++-----+---------+
+1 row in set (0.00 sec)
+
+mysql> select * from lib_audit;
++------+-------------+------------+-------+---------------------+
+| b_id | nameofbook  | author     | cause | dateOfInclusion     |
++------+-------------+------------+-------+---------------------+
+|   11 | Good Habits | Wendy Wood | U     | 2022-09-21 00:01:00 |
++------+-------------+------------+-------+---------------------+
+1 row in set (0.00 sec)
+
+------------------- BEFORE DELETE -------------------
+mysql> delimiter $$
+mysql> create trigger before_lib_delete
+    -> BEFORE DELETE
+    -> ON lib FOR EACH ROW
+    -> BEGIN
+    -> declare availability char;
+    -> select status into availability from lib where b_id = old.b_id;
+    -> IF availability = 'I' then
+    ->     SIGNAL SQLSTATE '45000'
+    ->         SET MESSAGE_TEXT = "Book can't be deleted as not available !";
+    -> END IF;
+    -> update lib_audit set cause = 'D', dateOfInclusion = NOW() where b_id = old.b_id;
+    -> END $$
+Query OK, 0 rows affected (0.01 sec)
+
+------------------- AFTER DELETE -------------------
+
+mysql> delimiter $$
+mysql> create trigger after_lib_delete
+    -> AFTER DELETE
+    -> ON lib FOR EACH ROW
+    -> BEGIN
+    -> delete from finetrig where bid = old.b_id;
+    -> END $$
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> delimiter ;
+mysql> select * from lib;
++------+-------------+------------+--------+
+| b_id | nameofbook  | author     | status |
++------+-------------+------------+--------+
+|   11 | Good Habits | Wendy Wood | R      |
++------+-------------+------------+--------+
+1 row in set (0.00 sec)
+
+mysql> select * from finetrig;
++-----+---------+
+| bid | fineamt |
++-----+---------+
+|  11 |      10 |
++-----+---------+
+1 row in set (0.00 sec)
+
+mysql> select * from lib_audit;
++------+-------------+------------+-------+---------------------+
+| b_id | nameofbook  | author     | cause | dateOfInclusion     |
++------+-------------+------------+-------+---------------------+
+|   11 | Good Habits | Wendy Wood | U     | 2022-09-21 00:01:00 |
++------+-------------+------------+-------+---------------------+
+1 row in set (0.00 sec)
+
+mysql> delete from lib where b_id = 11;
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from lib;
+Empty set (0.00 sec)
+
+mysql> select * from finetrig;
+Empty set (0.00 sec)
+
+mysql> select * from lib_audit;
++------+-------------+------------+-------+---------------------+
+| b_id | nameofbook  | author     | cause | dateOfInclusion     |
++------+-------------+------------+-------+---------------------+
+|   11 | Good Habits | Wendy Wood | D     | 2022-09-21 00:26:34 |
++------+-------------+------------+-------+---------------------+
+1 row in set (0.00 sec)
+

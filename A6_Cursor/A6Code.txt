@@ -1,0 +1,32 @@
+create table Cust_old(cid int primary key, name varchar(25) NOT NULL);
+
+insert into Cust_old values(1, "Rohit"), (2, "Rahul"), (78,"Raghav"), (85,"Mohit"),(94,"Shivam"),(45, "Raman");
+
+create table Cust_new(cid int primary key, name varchar(25) NOT NULL);
+
+insert into Cust_new values(3, "Rohan"), (2, "Rahul"), (7,"Satyam"), (8,"Ramdin"),(9,"Aditya"),(42, "Rajendra"),(78,"Raghav");
+
+delimiter $$
+drop procedure if exits Merge$$
+create procedure Merge()
+begin
+	declare Cust_id int;
+	declare done int DEFAULT FALSE;
+	declare c1 CURSOR for SELECT cid from Cust_old;
+	declare CONTINUE HANDLER FOR NOT FOUND SET done = TRUE; 
+	OPEN c1;
+	loop1 : LOOP
+		FETCH c1 into Cust_id;
+		if done then
+			leave loop1;
+		end if;
+		if not exists(select * from Cust_new where cid = Cust_id) then
+			insert into Cust_new select * from Cust_old where cid = Cust_id;
+		end if;
+	end LOOP loop1;
+	CLOSE c1;
+end $$
+delimiter ;
+call Merge();
+		
+			

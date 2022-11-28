@@ -1,0 +1,52 @@
+*Q.1* How many classes does “Alice Jones” teach
+kaldb> var mapFunction1 = function () {
+...    emit(this.class, 1);
+... };
+
+kaldb> var reduceFunction1 = function (keyClass, count) {
+...    return Array.sum(count);
+... };
+
+kaldb> db.classes.mapReduce(
+...   mapFunction1, reduceFunction1, { query: { professor: "Alice Jones" }, out: "countOfClasses" }
+... )
+{ result: 'countOfClasses', ok: 1 }
+
+kaldb> db.countOfClasses.find()
+[
+  { _id: 'Biology 101', value: 1 },
+  { _id: 'Chemistry 101', value: 1 },
+  { _id: 'Geology 101', value: 1 }
+]
+
+*Q.2*Find the cost to attend each of the professor’s classes
+kaldb> var mapFunction2 = function () {
+...   emit(this.professor, { count: 1, cost: this.cost });
+... };
+
+kaldb>
+
+kaldb> var reduceFunction2 = function (keyProfessor, valuesObj) {
+...   reducedObj = { count: 0, cost: 0 };
+...   for (var idx = 0; idx < valuesObj.length; idx++){
+...     reducedObj.count += valuesObj[idx].count;
+...     reducedObj.cost += valuesObj[idx].cost;
+...   }
+...   return reducedObj;
+... };
+
+kaldb>
+
+kaldb> db.classes.mapReduce(
+...   mapFunction2, reduceFunction2,
+...   { out : "priceOfEachProfessor"}
+... )
+{ result: 'priceOfEachProfessor', ok: 1 }
+kaldb>
+
+kaldb> db.priceOfEachProfessor.find();
+[
+  { _id: 'Paul Slugman', value: { count: 2, cost: 3250 } },
+  { _id: 'Rhonda Smith', value: { count: 1, cost: 1500 } },
+  { _id: 'Alice Jones', value: { count: 3, cost: 4600 } }
+]

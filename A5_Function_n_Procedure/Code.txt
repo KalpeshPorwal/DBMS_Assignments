@@ -1,0 +1,64 @@
+create table marks(roll int primary key,name varchar(25) NOT NULL, total_marks int not null);
+
+insert into marks values(1,"Rahul Mohite", 1400),(4,"Abhishek Awate", 980),(3,"Shahid Kapoor", 825),(9,"Dinesh Kartik", 890),(19,"Eijaz Khan", 950),(24,"Archana Wagh", 625),(48,"Sandip Hooda", 989), (41,"Mandip Singh", 900), (51,"Ruturaj Gaikwad", 1500),(22,"Rameshwar Sarda", 990);
+
+create table Result(rollno int NOT NULL, Name varchar(25) NOT NULL, class varchar(15));
+-----------------------------------------------------------------
+delimiter $$
+drop function if exists findClass$$
+create function findClass(rollno int)
+returns varchar(15)
+deterministic
+begin
+declare class varchar(15);
+declare mark int;
+select total_marks into mark from marks where roll = rollno;
+if (mark >= 990 and mark <= 1500) then
+	set class = "DISTINCTION";
+end if;
+if (mark >= 900 and mark <= 989) then
+	set class = "FIRST CLASS";
+end if;
+if (mark >= 825 and mark <= 899) then
+	set class = "SECOND CLASS";
+end if;
+return class;
+end $$
+delimiter ;
+-----------------------------------------------------------------
+delimiter $$
+drop procedure if exists insertClass$$
+create procedure insertClass(in rn int)
+begin
+    declare sname varchar(25);
+    declare CLASS varchar(15);
+    select findClass(rn) into CLASS;
+    select name into sname from marks where roll = rn;
+    insert into Result values(rn, sname, CLASS);
+end $$
+delimiter ;
+-------------------------EXCEPTION--------------------------------
+delimiter $$
+drop procedure if exists insertClass$$
+create procedure insertClass(in rn int)
+begin
+    declare sname varchar(25);
+    declare CLASS varchar(15);
+    declare EXIT HANDLER for NOT FOUND
+    BEGIN
+        select roll from marks where roll = rn;
+    END;
+    select findClass(rn) into CLASS;
+    select name into sname from marks where roll = rn;
+    if CLASS is NULL then
+	SET CLASS = "FAILED";
+	insert into Result values(rn, sname, CLASS);
+	SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = "CLASS CAN'T BE NULL..";
+    end if;
+    insert into Result values(rn, sname, CLASS);
+end $$
+delimiter ;
+
+
+

@@ -1,0 +1,57 @@
+create table Borrower(roll int PRIMARY KEY, name varchar(20) NOT NULL, doi date, nameOfBook varchar(20) NOT NULL, status char);
+
+create table Fine(roll int PRIMARY KEY, dof date, amt int);
+
+insert into Borrower values(1, 'Mohan Rao', '2022-06-11', 'Computer Networks', 'I'),(2, 'Satyam Kalia', '2022-06-13', 'Database Management', 'I'),(3, 'Shiva More', '2022-07-01', 'Web Development', 'I'),(4, 'Rohan Indani', '2022-05-09', 'App Development', 'I'),(5, 'Aditya Chauhan', '2022-07-26', 'Game Dev', 'I'),(6, 'Rohit Harkal', '2022-08-11', 'Theory Of Computn', 'I'),(7, 'Aditya Patil', '2022-07-25', 'Operating Sys', 'I');
+    
+alter table Borrower drop PRIMARY KEY;
+
+    
+delimiter $$
+drop procedure if exists FineAmt $$
+create procedure FineAmt(in Roll int)
+    -> begin
+    -> declare amt int default 0;
+    -> declare diff int default 0;
+    -> set diff = CURDATE() - (select doi from Borrower where roll= Roll);
+    -> if diff > 30 then
+    -> set amt = diff * 10;
+    -> insert into Fine values(Roll, (select doi from Borrower where roll = Roll), amt);
+    -> else if diff > 15 and diff <= 30 then
+    -> set amt = diff * 5;
+    -> insert into Fine values(Roll, (select doi from Borrower where roll = Roll), amt);
+    -> else
+    -> update Borrower set status = 'R' where roll = Roll;
+    -> end if;
+    -> end #
+    
+    create procedure FineAmt(in Roll int)
+    -> begin
+    -> declare amt int default 0;
+    -> declare diff int default 0;
+    -> declare DOI date;
+    -> select doi into DOI from Borrower where roll = Roll;
+    -> select DATEDIFF(CURDATE(), DOI) into diff;
+    -> if diff > 15 then 
+    -> set amt = diff * 5;
+    -> select amt;
+    -> end if;
+    -> end $$
+    
+delimiter $$
+create procedure FineAmt6(in Roll int, out amt int)
+begin
+declare diff int default 0;
+declare DOI date;
+select doi into DOI from Borrower where roll = Roll;
+set diff = CURDATE() - DOI;
+if diff > 30 then
+set amt = diff * 10;
+elseif diff > 15 and diff <= 30 then
+set amt = diff * 5;
+end if;
+if amt > 0 then
+insert into Fine values(Roll, CURDATE(), amt);
+end if;
+end $$
+

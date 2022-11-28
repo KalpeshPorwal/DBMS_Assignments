@@ -1,0 +1,74 @@
+-----------------------PROCEDURE--------------------------------------
+delimiter $$
+drop procedure if exists FineAmtE$$
+create procedure FineAmtE(in rollno int, in bn varchar(20))
+begin
+   declare amt int default 0;
+   declare dateofi date;
+   declare diff int default 0;
+   select doi into dateofi from Borrower where roll = Roll and nameOfBook = bn;
+   select DATEDIFF(CURDATE(), dateofi) into diff;
+   if diff < 0 then
+      SIGNAL SQLSTATE '45000'нн
+         set MESSAGE_TEXT = "No. of days can't be negative";
+   end if;
+   if diff > 30 then
+      set amt = diff * 10;
+   else
+      set amt = diff * 5;
+   end if;
+   if amt > 0 then
+      insert into Fine values(rollno, CURDATE(), amt);
+   end if;
+   update Borrower set status = 'R' where roll = rollno and nameOfBook = bn;
+end $$
+
+MariaDB [te31456db]> select * from Borrower;
++------+----------------+------------+---------------------+--------+
+| roll | name           | doi        | nameOfBook          | status |
++------+----------------+------------+---------------------+--------+
+|    1 | Mohan Rao      | 2022-06-11 | Computer Networks   | I      |
+|    2 | Satyam Kalia   | 2022-06-13 | Database Management | I      |
+|    3 | Shiva More     | 2022-07-01 | Web Development     | I      |
+|    4 | Rohan Indani   | 2022-05-09 | App Development     | I      |
+|    5 | Aditya Chauhan | 2022-07-26 | Game Dev            | R      |
+|    6 | Rohit Harkal   | 2022-08-11 | Theory Of Computn   | I      |
+|    7 | Aditya Patil   | 2022-07-25 | Operating Sys       | I      |
+|   15 | Mahesh Chandak | 2022-08-30 | And Dev             | I      |
++------+----------------+------------+---------------------+--------+
+8 rows in set (0.002 sec)
+
+MariaDB [te31456db]> select * from Fine;
++------+------------+------+
+| roll | dof        | amt  |
++------+------------+------+
+|    5 | 2022-08-24 |  145 |
++------+------------+------+
+1 row in set (0.002 sec)
+
+MariaDB [te31456db]> call FineAmtE(15, "And Dev");
+Query OK, 4 rows affected (0.067 sec)
+
+MariaDB [te31456db]> select * from Fine;
++------+------------+------+
+| roll | dof        | amt  |
++------+------------+------+
+|    5 | 2022-08-24 |  145 |
+|   15 | 2022-09-14 |   75 |
++------+------------+------+
+2 rows in set (0.001 sec)
+
+MariaDB [te31456db]> select * from Borrower;
++------+----------------+------------+---------------------+--------+
+| roll | name           | doi        | nameOfBook          | status |
++------+----------------+------------+---------------------+--------+
+|    1 | Mohan Rao      | 2022-06-11 | Computer Networks   | I      |
+|    2 | Satyam Kalia   | 2022-06-13 | Database Management | I      |
+|    3 | Shiva More     | 2022-07-01 | Web Development     | I      |
+|    4 | Rohan Indani   | 2022-05-09 | App Development     | I      |
+|    5 | Aditya Chauhan | 2022-07-26 | Game Dev            | R      |
+|    6 | Rohit Harkal   | 2022-08-11 | Theory Of Computn   | I      |
+|    7 | Aditya Patil   | 2022-07-25 | Operating Sys       | I      |
+|   15 | Mahesh Chandak | 2022-08-30 | And Dev             | R      |
++------+----------------+------------+---------------------+--------+
+

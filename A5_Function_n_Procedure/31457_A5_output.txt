@@ -1,0 +1,154 @@
+                        Assignment 5 Output
+//-------------------------
+MariaDB [te31457db]> create table studmarks(roll int primary key, name varchar(20) , totalmarks int );
+
+//--------------------
+MariaDB [te31457db]> desc studmarks;
++------------+-------------+------+-----+---------+-------+
+| Field      | Type        | Null | Key | Default | Extra |
++------------+-------------+------+-----+---------+-------+
+| roll       | int(11)     | NO   | PRI | NULL    |       |
+| name       | varchar(20) | YES  |     | NULL    |       |
+| totalmarks | int(11)     | YES  |     | NULL    |       |
++------------+-------------+------+-----+---------+-------+
+3 rows in set (0.003 sec)
+//-----------------------------
+
+MariaDB [te31457db]> create table result(roll int primary key , name varchar(20), class varchar(20));
+
+//---------------------------
+
+MariaDB [te31457db]> insert into studmarks values
+    ->     ( 1,'kalpesh' , 1100),
+    ->     ( 2,'raj' , 990 ),
+    ->      ( 3,'amartya' , 1400),
+    ->     ( 4,'shiv' , 1350),
+    ->     ( 5,'ruturaj' , 1500),
+    ->      (  6,'kunal' , 850),
+    ->      ( 7,'akshay' , 880),
+    ->      ( 8,'prajwal' , 750),
+    ->      ( 9,'prakash' , 800),
+    ->      ( 10,'prasad' , 720);
+Query OK, 10 rows affected (0.026 sec)
+Records: 10  Duplicates: 0  Warnings: 0
+
+//---------------------------------
+
+MariaDB [te31457db]> select * from studmarks;
++------+---------+------------+
+| roll | name    | totalmarks |
++------+---------+------------+
+|    1 | kalpesh |       1100 |
+|    2 | raj     |        990 |
+|    3 | amartya |       1400 |
+|    4 | shiv    |       1350 |
+|    5 | ruturaj |       1500 |
+|    6 | kunal   |        850 |
+|    7 | akshay  |        880 |
+|    8 | prajwal |        750 |
+|    9 | prakash |        800 |
+|   10 | prasad  |        720 |
++------+---------+------------+
+10 rows in set (0.002 sec)
+
+//--------------------
+
+MariaDB [te31457db]> delimiter ##
+MariaDB [te31457db]> create function findclass(marks int)
+    ->      returns varchar(20) 
+    ->     deterministic
+    ->      begin
+    ->    declare Class varchar(20) ;
+    ->     if (marks<=1500 and marks>= 990) then
+    ->     set Class = "Distinction" ;
+    ->     end if;
+    ->     if (marks<= 989 and marks>=900) then
+    ->     set Class = "First Class";
+    ->     end if;
+    ->     if (marks<=899 and marks>=825) then
+    ->     set Class = "Higher Second Class";
+    ->     end if;
+    ->     
+    ->     return Class;
+    ->     
+    ->  end ##
+
+//----------------------------
+
+MariaDB [te31457db]>    delimiter ##
+MariaDB [te31457db]>     drop procedure if exists insertresult ##
+Query OK, 0 rows affected, 1 warning (0.002 sec)
+
+MariaDB [te31457db]>     create procedure insertresult(in rollno int)
+    ->     begin
+    ->     declare marks int default 0 ;
+    ->     declare sname varchar(20) ;
+    ->     declare Class varchar(20)  ;
+    ->     DECLARE EXIT HANDLER FOR NOT FOUND
+    ->      
+
+    ->     select totalmarks from studmarks where roll = rollno  into marks ;
+    ->   
+    ->     select name from studmarks where roll = rollno into sname ;
+    ->     select findclass(marks) into Class;
+    ->     
+    ->     if Class is NULL then
+    ->           SET Class= "Fail";
+    ->         insert into result values( rollno , sname , Class);
+    ->         SIGNAL SQLSTATE '45000'
+    -> 
+
+    -> SET MESSAGE_TEXT = "Class can't be NULL";
+    ->       
+    ->     end if ;
+    -> 
+    ->     insert into result values( rollno , sname , Class);
+    ->     end ##
+Query OK, 0 rows affected, 2 warnings (0.085 sec)
+MariaDB [te31457db]> delimiter ;
+
+//-------------------------------------------
+
+MariaDB [te31457db]> call insertresult(1);
+Query OK, 4 rows affected (0.025 sec)
+
+MariaDB [te31457db]> select * from result;
++------+---------+-------------+
+| roll | name    | class       |
++------+---------+-------------+
+|    1 | kalpesh | Distinction |
++------+---------+-------------+
+1 row in set (0.002 sec)
+
+//-------------------------------------
+
+MariaDB [te31457db]> call insertresult(10);
+ERROR 1644 (45000): Class can't be NULL
+MariaDB [te31457db]> select * from result ;
++------+---------+-------------+
+| roll | name    | class       |
++------+---------+-------------+
+|    1 | kalpesh | Distinction |
+|   10 | prasad  | Fail        |
++------+---------+-------------+
+
+//---------------------------
+MariaDB [te31457db]> call insertresult(11);
+Query OK, 0 rows affected (0.001 sec)
+
+//---------------------------
+MariaDB [te31457db]> call insertresult(5);
+Query OK, 4 rows affected (0.040 sec)
+
+MariaDB [te31457db]> select * from result ;
++------+---------+-------------+
+| roll | name    | class       |
++------+---------+-------------+
+|    1 | kalpesh | Distinction |
+|    5 | ruturaj | Distinction |
+|   10 | prasad  | Fail        |
++------+---------+-------------+
+3 rows in set (0.002 sec)
+//---------------------------------------END---------------------------------
+
+
